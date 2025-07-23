@@ -5,12 +5,9 @@
   "scripts": {
     "check": "pnpm -r --parallel run check",
     "check:write": "pnpm -r --parallel run check:write",
-    "build:vite": "pnpm -r run build",
-    "build:wasm": "pnpm -F @spz-loader/core run build:docker",
-    "build:all": "pnpm run build:wasm && pnpm run build:vite",
-    "build": "pnpm run build:vite",
     "version:set": "pnpm exec lerna version",
-    "publish:all": "NPM_CONFIG_PROVENANCE=true pnpm publish --filter \"@spz-loader/*\" --access public"
+    "build:cesium-wasm": "pnpm -F @cesium-spz-loader/core run build:docker",
+    "publish:cesium-core": "NPM_CONFIG_PROVENANCE=true pnpm publish --filter \"@cesium-spz-loader/core\" --access public"
   },
   "engines": {
     "node": ">=16",

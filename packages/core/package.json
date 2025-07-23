@@ -1,5 +1,5 @@
 {
-  "name": "@spz-loader/core",
+  "name": "@cesium-spz-loader/core",
   "description": ".spz Gaussian Splatting file loader",
   "author": {
     "name": "drumath2237",
