@@ -1,7 +1,9 @@
 import MainModuleFactory from "./build/main";
 import type { MainModule } from "./build/main";
 import {
+  type CesiumGaussianCloud,
   type GaussianCloud,
+  createCesiumGaussianCloudFromRaw,
   createGaussianCloudFromRaw,
   disposeRawGSCloud,
 } from "./gaussianCloud";
@@ -15,6 +17,12 @@ interface ILoadSpzOptions {
   };
 }
 
+let mainModulePromise: Promise<MainModule> | undefined;
+
+const getMainModule = (): Promise<MainModule> => {
+  return (mainModulePromise ??= MainModuleFactory());
+};
+
 /**
  * decode .spz data to GaussianCloud
  * @param spzData .spz file binary data
@@ -24,7 +32,7 @@ const loadSpz = async (
   spzData: Uint8Array | ArrayBuffer,
   options?: ILoadSpzOptions,
 ): Promise<GaussianCloud> => {
-  const wasmModule = await MainModuleFactory();
+  const wasmModule = await getMainModule();
 
   const spzBuffer =
     spzData instanceof Uint8Array ? spzData : new Uint8Array(spzData);
@@ -67,6 +75,53 @@ const loadSpz = async (
   }
 };
 
+const loadSpzCesium = async (
+  spzData: Uint8Array | ArrayBuffer,
+  options?: ILoadSpzOptions,
+): Promise<CesiumGaussianCloud> => {
+  const wasmModule = await getMainModule();
+
+  const spzBuffer =
+    spzData instanceof Uint8Array ? spzData : new Uint8Array(spzData);
+
+  let pointer: number | null = null;
+
+  try {
+    pointer = wasmModule._malloc(
+      Uint8Array.BYTES_PER_ELEMENT * spzBuffer.length,
+    );
+    if (pointer === null) {
+      throw new Error("couldn't allocate memory");
+    }
+
+    wasmModule.HEAPU8.set(spzBuffer, pointer / Uint8Array.BYTES_PER_ELEMENT);
+
+    const coordinateSystem =
+      wasmModule.CoordinateSystem[
+        options?.unpackOptions?.coordinateSystem ?? "UNSPECIFIED"
+      ];
+
+    const rawGsCloud = wasmModule.load_spz(pointer, spzBuffer.length, {
+      coordinateSystem,
+    });
+
+    const gaussianCloud = createCesiumGaussianCloudFromRaw(
+      wasmModule,
+      rawGsCloud,
+      options,
+    );
+    disposeRawGSCloud(wasmModule, rawGsCloud);
+
+    return gaussianCloud;
+  } catch (error) {
+    throw error as Error;
+  } finally {
+    if (pointer !== null) {
+      wasmModule._free(pointer);
+    }
+  }
+};
+
 const loadSpzFromUrl = (
   url: string,
   options?: ILoadSpzOptions,
@@ -77,8 +132,10 @@ const loadSpzFromUrl = (
 };
 
 export {
+  type CesiumGaussianCloud,
   type ILoadSpzOptions,
   loadSpz,
+  loadSpzCesium,
   loadSpzFromUrl,
   type CoordinateSystemUnion,
 };

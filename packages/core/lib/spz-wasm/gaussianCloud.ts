@@ -1,5 +1,13 @@
 import type { MainModule, RawGaussianCloud } from "./build/main";
-import { floatVectorToFloatArray } from "./cppBufferUtil";
+import {
+  type PositionBounds,
+  floatVectorToFloatArray,
+  floatVectorToFloatArrayWithBounds,
+  floatVectorToFloatArrayColor,
+  floatVectorToFloatArrayExp,
+  floatVectorToFloatArraySigmoid,
+  floatVectorsToRgba8Array,
+} from "./cppBufferUtil";
 
 export type GaussianCloud = {
   numPoints: number;
@@ -13,10 +21,17 @@ export type GaussianCloud = {
   sh: Float32Array;
 };
 
-const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
-
-const colorScaleFactory = (scale: number) => (color: number) =>
-  color * scale + 0.5;
+export type CesiumGaussianCloud = {
+  numPoints: number;
+  shDegree: number;
+  antialiased: boolean;
+  positions: Float32Array;
+  positionBounds: PositionBounds;
+  scales: Float32Array;
+  rotations: Float32Array;
+  colorsRgba: Uint8Array;
+  sh: Float32Array;
+};
 
 /**
  * create new gaussian cloud from raw
@@ -37,15 +52,38 @@ export const createGaussianCloudFromRaw = (
     shDegree: raw.shDegree,
     antialiased: raw.antialiased,
     positions: floatVectorToFloatArray(wasmModule, raw.positions),
-    scales: floatVectorToFloatArray(wasmModule, raw.scales, Math.exp),
+    scales: floatVectorToFloatArrayExp(wasmModule, raw.scales),
     rotations: floatVectorToFloatArray(wasmModule, raw.rotations),
-    alphas: floatVectorToFloatArray(wasmModule, raw.alphas, sigmoid),
-    colors: floatVectorToFloatArray(
+    alphas: floatVectorToFloatArraySigmoid(wasmModule, raw.alphas),
+    colors: floatVectorToFloatArrayColor(wasmModule, raw.colors, colScale),
+    // FIXME: incorrect SH logic
+    sh: floatVectorToFloatArray(wasmModule, raw.sh),
+  };
+};
+
+export const createCesiumGaussianCloudFromRaw = (
+  wasmModule: MainModule,
+  raw: RawGaussianCloud,
+  options?: {
+    colorScaleFactor?: number;
+  },
+): CesiumGaussianCloud => {
+  const colScale = options?.colorScaleFactor ?? 0.282;
+  const positions = floatVectorToFloatArrayWithBounds(wasmModule, raw.positions);
+  return {
+    numPoints: raw.numPoints,
+    shDegree: raw.shDegree,
+    antialiased: raw.antialiased,
+    positions: positions.array,
+    positionBounds: positions.bounds,
+    scales: floatVectorToFloatArrayExp(wasmModule, raw.scales),
+    rotations: floatVectorToFloatArray(wasmModule, raw.rotations),
+    colorsRgba: floatVectorsToRgba8Array(
       wasmModule,
       raw.colors,
-      colorScaleFactory(colScale),
+      raw.alphas,
+      colScale,
     ),
-    // FIXME: incorrect SH logic
     sh: floatVectorToFloatArray(wasmModule, raw.sh),
   };
 };

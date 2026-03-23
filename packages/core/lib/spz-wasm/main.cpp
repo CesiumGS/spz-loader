@@ -18,8 +18,7 @@ using namespace emscripten;
 GaussianCloud load_spz(const int gsPtr, const int length, spz::UnpackOptions options)
 {
   auto pointer = (uint8_t *)gsPtr;
-  auto spzBuffer = vector<uint8_t>(pointer, pointer + length);
-  auto gsCloud = spz::loadSpz(spzBuffer, options);
+  auto gsCloud = spz::unpackGaussians(spz::loadSpzPacked(pointer, length), options);
   return gsCloud;
 }
 

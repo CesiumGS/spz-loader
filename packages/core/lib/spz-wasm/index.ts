@@ -1,2 +1,2 @@
 export * from "./spzApi";
-export type { GaussianCloud } from "./gaussianCloud";
+export type { CesiumGaussianCloud, GaussianCloud } from "./gaussianCloud";
