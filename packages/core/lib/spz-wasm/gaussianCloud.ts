@@ -3,9 +3,6 @@ import {
   type PositionBounds,
   floatVectorToFloatArray,
   floatVectorToFloatArrayWithBounds,
-  floatVectorToFloatArrayColor,
-  floatVectorToFloatArrayExp,
-  floatVectorToFloatArraySigmoid,
   floatVectorsToRgba8Array,
 } from "./cppBufferUtil";
 
@@ -33,6 +30,11 @@ export type CesiumGaussianCloud = {
   sh: Float32Array;
 };
 
+const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+
+const colorScaleFactory = (scale: number) => (color: number) =>
+  color * scale + 0.5;
+
 /**
  * create new gaussian cloud from raw
  * @param wasmModule emscripten wasm main module
@@ -52,10 +54,14 @@ export const createGaussianCloudFromRaw = (
     shDegree: raw.shDegree,
     antialiased: raw.antialiased,
     positions: floatVectorToFloatArray(wasmModule, raw.positions),
-    scales: floatVectorToFloatArrayExp(wasmModule, raw.scales),
+    scales: floatVectorToFloatArray(wasmModule, raw.scales, Math.exp),
     rotations: floatVectorToFloatArray(wasmModule, raw.rotations),
-    alphas: floatVectorToFloatArraySigmoid(wasmModule, raw.alphas),
-    colors: floatVectorToFloatArrayColor(wasmModule, raw.colors, colScale),
+    alphas: floatVectorToFloatArray(wasmModule, raw.alphas, sigmoid),
+    colors: floatVectorToFloatArray(
+      wasmModule,
+      raw.colors,
+      colorScaleFactory(colScale),
+    ),
     // FIXME: incorrect SH logic
     sh: floatVectorToFloatArray(wasmModule, raw.sh),
   };
@@ -76,7 +82,7 @@ export const createCesiumGaussianCloudFromRaw = (
     antialiased: raw.antialiased,
     positions: positions.array,
     positionBounds: positions.bounds,
-    scales: floatVectorToFloatArrayExp(wasmModule, raw.scales),
+    scales: floatVectorToFloatArray(wasmModule, raw.scales, Math.exp),
     rotations: floatVectorToFloatArray(wasmModule, raw.rotations),
     colorsRgba: floatVectorsToRgba8Array(
       wasmModule,

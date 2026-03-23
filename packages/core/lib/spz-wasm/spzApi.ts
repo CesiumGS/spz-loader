@@ -17,12 +17,6 @@ interface ILoadSpzOptions {
   };
 }
 
-let mainModulePromise: Promise<MainModule> | undefined;
-
-const getMainModule = (): Promise<MainModule> => {
-  return (mainModulePromise ??= MainModuleFactory());
-};
-
 /**
  * decode .spz data to GaussianCloud
  * @param spzData .spz file binary data
@@ -32,7 +26,7 @@ const loadSpz = async (
   spzData: Uint8Array | ArrayBuffer,
   options?: ILoadSpzOptions,
 ): Promise<GaussianCloud> => {
-  const wasmModule = await getMainModule();
+  const wasmModule = await MainModuleFactory();
 
   const spzBuffer =
     spzData instanceof Uint8Array ? spzData : new Uint8Array(spzData);
@@ -79,7 +73,7 @@ const loadSpzCesium = async (
   spzData: Uint8Array | ArrayBuffer,
   options?: ILoadSpzOptions,
 ): Promise<CesiumGaussianCloud> => {
-  const wasmModule = await getMainModule();
+  const wasmModule = await MainModuleFactory();
 
   const spzBuffer =
     spzData instanceof Uint8Array ? spzData : new Uint8Array(spzData);

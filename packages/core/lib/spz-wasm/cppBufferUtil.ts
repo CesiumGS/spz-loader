@@ -1,16 +1,5 @@
 import type { MainModule, VectorFloat32, VectorUInt8T } from "./build/main";
 
-const copyFloatVector = (
-  wasmModule: MainModule,
-  vec: VectorFloat32,
-): Float32Array => {
-  const pointer = wasmModule.vf32_ptr(vec);
-  const size = vec.size();
-  const floatOffset = pointer / Float32Array.BYTES_PER_ELEMENT;
-
-  return wasmModule.HEAPF32.slice(floatOffset, floatOffset + size);
-};
-
 /**
  * create new Float32Array from cpp FloatVector
  * @param wasmModule emscripten main module
@@ -22,50 +11,11 @@ export const floatVectorToFloatArray = (
   vec: VectorFloat32,
   enhancementFunc: (n: number) => number = (n) => n,
 ): Float32Array => {
+  const pointer = wasmModule.vf32_ptr(vec);
   const size = vec.size();
-  const copiedBuffer = copyFloatVector(wasmModule, vec);
+  const buffer = new Float32Array(wasmModule.HEAPF32.buffer, pointer, size);
+  const copiedBuffer = buffer.map(enhancementFunc);
 
-  if (enhancementFunc !== undefined) {
-    for (let i = 0; i < size; i++) {
-      copiedBuffer[i] = enhancementFunc(copiedBuffer[i]);
-    }
-  }
-
-  return copiedBuffer;
-};
-
-export const floatVectorToFloatArrayExp = (
-  wasmModule: MainModule,
-  vec: VectorFloat32,
-): Float32Array => {
-  const copiedBuffer = copyFloatVector(wasmModule, vec);
-  for (let i = 0; i < copiedBuffer.length; i++) {
-    copiedBuffer[i] = Math.exp(copiedBuffer[i]);
-  }
-  return copiedBuffer;
-};
-
-export const floatVectorToFloatArraySigmoid = (
-  wasmModule: MainModule,
-  vec: VectorFloat32,
-): Float32Array => {
-  const copiedBuffer = copyFloatVector(wasmModule, vec);
-  for (let i = 0; i < copiedBuffer.length; i++) {
-    const value = copiedBuffer[i];
-    copiedBuffer[i] = 1 / (1 + Math.exp(-value));
-  }
-  return copiedBuffer;
-};
-
-export const floatVectorToFloatArrayColor = (
-  wasmModule: MainModule,
-  vec: VectorFloat32,
-  colorScale: number,
-): Float32Array => {
-  const copiedBuffer = copyFloatVector(wasmModule, vec);
-  for (let i = 0; i < copiedBuffer.length; i++) {
-    copiedBuffer[i] = copiedBuffer[i] * colorScale + 0.5;
-  }
   return copiedBuffer;
 };
 
